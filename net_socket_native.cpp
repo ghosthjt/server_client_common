@@ -54,33 +54,26 @@ int native_socket::connect(std::string ip, int port, int time_out /*= 3 */)
 
 int native_socket::connect(const boost::asio::ip::tcp::endpoint & peer_endpoint, int time_out)
 {
-	work_state = work_state_closed;
+	work_state = work_state_connecting;
 
-	if (time_out > 0) {
-		s.async_connect(peer_endpoint, boost::bind(&native_socket::connect_handler,
-			boost::dynamic_pointer_cast<native_socket>(shared_from_this()),
-			boost::asio::placeholders::error));
+	s.async_connect(peer_endpoint, boost::bind(&native_socket::connect_handler,
+		boost::dynamic_pointer_cast<native_socket>(shared_from_this()),
+		boost::asio::placeholders::error));
 
-		time_t tstart = ::time(nullptr);
-		while (::time(nullptr) - tstart < time_out && work_state == work_state_closed)
-		{
-			ios_.reset();
-			ios_.poll();
-			boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
-		}
-
-		if (isworking()) {
-			return 0;
-		}
-		else
-			return -1;
+	time_t tstart = ::time(nullptr);
+	while (::time(nullptr) - tstart < time_out && work_state == work_state_connecting)
+	{
+		ios_.reset();
+		ios_.poll();
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
 	}
-	else {
-		s.async_connect(peer_endpoint, boost::bind(&native_socket::async_connect_handler,
-			boost::dynamic_pointer_cast<native_socket>(shared_from_this()),
-			boost::asio::placeholders::error));
+
+	if (isworking()) {
 		return 0;
 	}
+	else
+		return -1;
+
 }
 
 int native_socket::async_connect(std::string ip, int port, std::function<void(int)> conn_cb)
@@ -90,11 +83,14 @@ int native_socket::async_connect(std::string ip, int port, std::function<void(in
 	it = _resolv.resolve(qry, ec);
 	conn_cb_ = conn_cb;
 	if (it != boost::asio::ip::tcp::resolver::iterator()){
-		connect(*it, 0);
-		return work_state_connecting;
+		work_state = work_state_connecting;
+		s.async_connect(*it, boost::bind(&native_socket::async_connect_handler,
+			boost::dynamic_pointer_cast<native_socket>(shared_from_this()),
+			boost::asio::placeholders::error));
+		return 0;
 	}
 	else {
-		return work_state_connect_fail;
+		return -1;
 	}
 }
 
@@ -119,9 +115,12 @@ void native_socket::async_connect_handler(const boost::system::error_code& ec)
 	else {
 		it++;
 		if (it != boost::asio::ip::tcp::resolver::iterator()) {
-			connect(*it, 0);
+			s.async_connect(*it, boost::bind(&native_socket::async_connect_handler,
+				boost::dynamic_pointer_cast<native_socket>(shared_from_this()),
+				boost::asio::placeholders::error));
 		}
 		else {
+			work_state = work_state_connect_fail;
 			if (conn_cb_) conn_cb_(work_state_connect_fail);
 		}
 	}
