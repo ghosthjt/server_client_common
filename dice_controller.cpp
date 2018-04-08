@@ -671,7 +671,7 @@ void dice_controller::do_dice_dice(std::vector<int>& dice_result, std::map<std::
 		dice_perfer_user(dice_result, user_get, adjust_type, "all");
 	}
 	else {
-		if ((conf_.auto_balance_user_ || warden_->conf().user_stock_) && !conf_.user_mode_)	{
+		if ((conf_.auto_balance_user_  && !conf_.user_mode_) || warden_->conf().user_stock_)	{
 			std::string uid;
 			int prefer = warden_->feedback_user(uid, bets_, (*current_use_), this);
 
