@@ -86,8 +86,7 @@ int basic_socket_impl::send_data(stream_buffer dat)
 	time_counter ts;
 	ts.restart();
 	do{
-		ios_.reset();
-		ios_.poll();
+		ios_.poll_one();
 	} 
 	while (pdat->data_left() > 0 && pec->value() == 0 && ts.elapse() < 300);
 
