@@ -72,26 +72,8 @@ int basic_socket_impl::send_data(stream_buffer dat)
 		return 0;
 	}
 
-	boost::shared_ptr<stream_buffer> pdat(new stream_buffer());
-	*pdat = dat;
-	boost::shared_ptr<boost::system::error_code> pec(new boost::system::error_code());
-
-	//使用异步来模拟同步发送
-	s.async_send(boost::asio::buffer(pdat->data(), pdat->data_left()),
-		boost::bind(&basic_socket_impl::on_data_block_sended,
-			this->shared_from_this(),
-			boost::asio::placeholders::error,
-			boost::asio::placeholders::bytes_transferred, pdat, pec));
-
-	time_counter ts;
-	ts.restart();
-	do{
-		ios_.poll_one();
-	} 
-	while (pdat->data_left() > 0 && pec->value() == 0 && ts.elapse() < 300);
-
-	if (pdat->data_left() == 0) {
-		return 0;
+	if (isworking()) {
+		return s.send(boost::asio::buffer(dat.data(), dat.data_left()));
 	}
 	else {
 		return -1;
