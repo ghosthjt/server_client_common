@@ -73,7 +73,9 @@ int basic_socket_impl::send_data(stream_buffer dat)
 	}
 
 	if (isworking()) {
-		return s.send(boost::asio::buffer(dat.data(), dat.data_left()));
+		boost::system::error_code ec;
+		s.send(boost::asio::buffer(dat.data(), dat.data_left()), 0, ec);
+		return ec.value();
 	}
 	else {
 		return -1;
