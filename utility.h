@@ -208,6 +208,10 @@ static std::string gzip_gz(const std::string& dat)
 class time_counter
 {
 public:
+	time_counter()
+	{
+		restart();
+	}
 	void		restart()
 	{
 		pt = boost::posix_time::microsec_clock::local_time();
