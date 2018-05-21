@@ -441,9 +441,8 @@ int http_request::http_parse_head()
 			context_.content_len_ = 0;
 			sscanf(itf->second.c_str(), "%ud", &context_.content_len_);
 		}
-		context_.response_body_.insert(context_.response_body_.end(), head_end + 4, recved + len);
 		//使用数据
-		use_recvdata(len);
+		use_recvdata(head_end + 4 - recved);
 	} while (0);
 
 	return ret_success;
@@ -480,16 +479,14 @@ void http_request::parse()
 
 	if (context_.request_state_ == request_state_recv_body) {
 		if (context_.content_t_ == content_t_length) {
+			char* chunk_begin = recv_helper_.reading_buffer_.data();
+			int len = recv_helper_.reading_buffer_.data_left();
+			context_.response_body_.insert(context_.response_body_.end(), chunk_begin, chunk_begin + len);
+			use_recvdata(len);
+
 			//收完
 			if (context_.response_body_.size() >= context_.content_len_) {
 				context_.request_state_ = request_state_finished;
-			}
-			//没有收完
-			else {
-				char* chunk_begin = recv_helper_.reading_buffer_.data();
-				int len = recv_helper_.reading_buffer_.data_left();
-				context_.response_body_.insert(context_.response_body_.end(), chunk_begin, chunk_begin + len);
-				use_recvdata(len);
 			}
 		}
 		else if (context_.content_t_ == content_t_chunked) {
@@ -536,7 +533,7 @@ void http_request::parse()
 			int len = recv_helper_.reading_buffer_.data_left();
 			//收取chunk体,长度为
 			int readl = std::min(len, (context_.content_len_ - (int)context_.chunk_body_.size()));
-			context_.chunk_body_.insert(context_.response_body_.end(), chunk_begin, chunk_begin + readl);
+			context_.chunk_body_.insert(context_.chunk_body_.end(), chunk_begin, chunk_begin + readl);
 			use_recvdata(readl);
 
 			if (recv_helper_.reading_buffer_.data_left() > 0)

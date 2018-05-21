@@ -2,21 +2,24 @@
 #include "net_socket_basic.h"
 #include "net_socket_remote.h"
 
-template<class remote_t>
+typedef boost::shared_ptr<remote_socket_v2> remote_socket_ptr;
+
 struct net_server
 {
-	typedef boost::shared_ptr<remote_t> remote_socket_ptr;
-	friend struct remote_socket_impl<remote_t, typename remote_t::client_t>;
+	friend class remote_socket_impl;
+
 protected:
 	std::vector<acceptor_ptr>	  acceptors_;
 	std::vector<unsigned short>	ports_;
 	bool												stoped_;
 	std::vector<remote_socket_ptr>	remotes_;
+	std::function<remote_socket_ptr(net_server&)> socket_cr_;
 
 public:
 	io_service			ios_;
-	explicit net_server()
+	explicit net_server(std::function<remote_socket_ptr(net_server&)> socket_cr)
 	{
+		socket_cr_ = socket_cr;
 	}
 
 	void	add_acceptor(unsigned short port)
@@ -88,7 +91,7 @@ public:
 		if (!acc.get()) return;
 		static int gid = 0;
 
-		remote_socket_ptr remote(new remote_t(*this));
+		remote_socket_ptr remote = socket_cr_(*this);
 		remote->id_ = gid++;
 
 		auto handle_acc =
