@@ -13,7 +13,7 @@ std::string build_http_request(std::string host, std::string param, std::string 
 	ret += "User-Agent:Mozilla/5.0 (Windows NT 10.0; WOW64; rv:46.0) Gecko/20100101 Firefox/46.0\r\n";
 	ret += "Accept:text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n";
 	ret += "Accept-Language:zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3\r\n";
-	ret += "Accept-Encoding: gzip, deflate\r\n";
+	ret += "Accept-Encoding: gzip\r\n";
 	ret += "Host:" + host + "\r\n";
 	ret += "Connection:Keep-Alive\r\n\r\n";
 	return ret;
@@ -483,7 +483,6 @@ void http_request::parse()
 			int len = recv_helper_.reading_buffer_.data_left();
 			context_.response_body_.insert(context_.response_body_.end(), chunk_begin, chunk_begin + len);
 			use_recvdata(len);
-
 			//ÊÕÍê
 			if (context_.response_body_.size() >= context_.content_len_) {
 				context_.request_state_ = request_state_finished;
@@ -541,8 +540,12 @@ void http_request::parse()
 		}
 	}
 
-	if (context_.request_state_ == request_state_finished && context_.vheads["content-encoding"] == "gzip") {
-		context_.response_body_ = ungzip(context_.response_body_);
+	if (context_.request_state_ == request_state_finished) {
+		if(context_.vheads["content-encoding"] == "gzip") 
+			context_.response_body_ = ungzip(context_.response_body_);
+		else{
+			recv_body(context_.response_body_);
+		}
 	}
 }
 

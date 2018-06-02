@@ -90,6 +90,8 @@ int native_socket::async_connect(std::string ip, int port, std::function<void(in
 		return 0;
 	}
 	else {
+		work_state = work_state_connect_fail;
+		if (conn_cb_) conn_cb_(work_state_connect_fail);
 		return -1;
 	}
 }

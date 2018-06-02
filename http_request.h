@@ -79,6 +79,8 @@ public:
 	http_request(boost::asio::io_service& ios, int init_rdbuffer = 1024);
 	http_context			context_;
 
+	virtual void			close(bool passive) override;
+
 	void					request(std::string ul, std::string extraheader = "");
 	void					request(std::string str_request, std::string host, std::string port);
 
@@ -86,13 +88,14 @@ public:
 	bool					is_stopped();
 	std::string				url() {return str_url_;}
 	int						recv_timeout();
+	
 protected:
-	std::string				str_url_, str_request_, str_host_, str_port_;
+	std::string				str_url_, str_request_, str_host_, str_port_, extra_header_;
 	unsigned int			timeout_;
 	time_t					last_recv_;
 
 	virtual int				on_data_recv() override;
-	virtual void			close(bool passive) override;
+	virtual void			recv_body(std::string) {};
 
 	void					parse();
 	void					do_request();
