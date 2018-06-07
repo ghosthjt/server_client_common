@@ -20,6 +20,7 @@ private:
 
 int					clean_rename(std::string dir);
 int					remove_dir(std::string dir);
+int					copy_dir(std::string from, std::string to, std::string& err);
 bool				file_exist(std::string f);
 int					save_file(std::string name, char* data, unsigned int len, std::string m);
 

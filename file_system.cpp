@@ -1,8 +1,21 @@
 #include "file_system.h"
 #include "utility.h"
 
-typedef int(*wtcb)(fs::path, void*);
+#ifdef ANDROID
+#include <android/log.h>
+#define  LOG_TAG    "main"
+#define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG,__VA_ARGS__)
+#else
+#define  LOGD(s, ...)
+#endif
 
+#define RETURN_ERROR(r)\
+if (ec.value() != 0) {\
+	err = ec.message();\
+	return r;\
+}
+
+typedef std::function<int(fs::path, void*)> wtcb;
 int construct_dir_add_file(fs::path  path, void* data)
 {
 	vdir* pdir = (vdir*) data;
@@ -18,28 +31,47 @@ int construct_dir_add_dir(fs::path  path, void* data)
 }
 
 int		walk_through_dir(fs::path  path, 
-												 wtcb		handle_files, 
-												 wtcb		handle_directories,
-												 void* data, 
-												 bool walk_all = false)
+	wtcb	handle_files,
+	wtcb	handle_directories,
+	void*	data,	
+	bool	walk_all = false)
 {
 	int ret = 0;
-	fs::directory_iterator dir_it = fs::directory_iterator(path);
+	boost::system::error_code ec;
+	fs::directory_iterator dir_it = fs::directory_iterator(path, ec);
+	if (ec.value() != 0) {
+		LOGD("walk_through_dir directory_iterator err:%s", ec.message().c_str());
+	}
 	fs::directory_iterator dir_end;
-	while (dir_it != dir_end)
-	{
-		if (fs::is_regular_file(dir_it->status())){
-			if (handle_files)
-				ret |= handle_files(dir_it->path(), data);
-		}
-		else if (fs::is_directory(dir_it->status())){
-			if (handle_directories)
-				ret |= handle_directories(dir_it->path(), data);
+	while (dir_it != dir_end){
+		try	{
+			if (fs::is_regular_file(dir_it->status(ec))) {
+				if (handle_files)
+					ret |= handle_files(dir_it->path(), data);
+			}
+			else if (fs::is_directory(dir_it->status(ec))) {
+				int r = 0;
+				if (handle_directories)
+					r = handle_directories(dir_it->path(), data);
 
-			if (walk_all){
-				ret |= walk_through_dir(dir_it->path(), handle_files, handle_directories, data, walk_all);
+				if (walk_all && r == 0) {
+					ret |= walk_through_dir(dir_it->path(), handle_files, handle_directories, data, walk_all);
+				}
+				else {
+					return r;
+				}
+			}
+
+			if (ec.value() != 0) {
+				LOGD("walk_through_dir err:%s", ec.message().c_str());
 			}
 		}
+		catch (const std::exception& e)	{
+			if (ec.value() != 0) {
+				LOGD("walk_through_dir err:%s", e.what());
+			}
+		}
+
 		dir_it++;
 	}
 	return ret;
@@ -68,6 +100,51 @@ int remove_dir(std::string dir)
 	boost::system::error_code ec;
 	fs::remove_all(p, ec);
 	return ec.value() == 0;
+}
+
+int copy_dir(std::string from, std::string to, std::string& err)
+{
+	LOGD("copy dir begins:%s to %s", from.c_str(), to.c_str());
+	boost::system::error_code ec;
+	fs::path pafrom = fs::path(from);
+	fs::path pato = fs::path(to);
+	auto cbfor_dir = [&pato, &pafrom, &ec, &err](fs::path pa, void*)->int {
+		try{
+			fs::path dirto = pato;
+			dirto += fs::relative(pa, pafrom, ec);
+			RETURN_ERROR(-1)
+				if (!fs::exists(dirto, ec)) {
+					fs::create_directories(dirto, ec);
+					RETURN_ERROR(-2);
+					LOGD("create_directories->%s", dirto.c_str());
+				}
+			RETURN_ERROR(-4)
+		}
+		catch (std::exception* e){
+			LOGD("create_directories failed:%s", e->what());
+		}
+		return 0;
+	};
+
+	auto cbfor_file = [&pato, &pafrom, &ec, &err](fs::path pa, void*)->int {
+		try	{
+			fs::path fto = pato;
+			fto += fs::relative(pa, pafrom, ec);
+			RETURN_ERROR(-3)
+				if (!fs::exists(fto, ec)) {
+					fs::copy_file(pa, fto, ec);
+					RETURN_ERROR(-4);
+					LOGD("copy_file-> from: %s   to: %s", pa.c_str(), fto.c_str());
+				}
+			RETURN_ERROR(-5)
+				return 0;
+		}
+		catch (std::exception* e){
+			LOGD("copy_file failed:%s", e->what());
+		}
+	};
+	LOGD("begin walk_through_dir");
+	return walk_through_dir(fs::path(from), cbfor_file, cbfor_dir, nullptr, true);
 }
 
 bool file_exist(std::string f)
@@ -110,7 +187,7 @@ void split_url(const std::string& url, std::string& host, std::string& port, std
 	split_str<std::string>(url_item[0], ":", vhi, false);
 
 	if (vhi.size() == 3){
-		host = vhi[1].c_str() + 2; //Ìø¹ýhttp:ºóÃæµÄ//;
+		host = vhi[1].c_str() + 2; //ï¿½ï¿½ï¿½ï¿½http:ï¿½ï¿½ï¿½ï¿½ï¿½//;
 		port = vhi[2];
 	}
 	else if (vhi.size() == 2){

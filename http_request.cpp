@@ -524,8 +524,9 @@ void http_request::parse()
 			context_.response_body_.insert(context_.response_body_.end(), context_.chunk_body_.begin(), context_.chunk_body_.end());
 			//再处理一次数据,看是不是有其它chunk.
 			context_.request_state_ = request_state_chunk_head;
-			if (recv_helper_.reading_buffer_.data_left() > 0)
-				parse();
+			if (recv_helper_.reading_buffer_.data_left() > 0){
+				parse(); return;
+			}
 		}
 		else {
 			char* chunk_begin = recv_helper_.reading_buffer_.data();
@@ -535,17 +536,17 @@ void http_request::parse()
 			context_.chunk_body_.insert(context_.chunk_body_.end(), chunk_begin, chunk_begin + readl);
 			use_recvdata(readl);
 
-			if (recv_helper_.reading_buffer_.data_left() > 0)
-				parse();
+			if (recv_helper_.reading_buffer_.data_left() > 0){
+				parse();	return;
+			}
 		}
 	}
 
 	if (context_.request_state_ == request_state_finished) {
-		if(context_.vheads["content-encoding"] == "gzip") 
+		if(context_.vheads["content-encoding"] == "gzip") {
 			context_.response_body_ = ungzip(context_.response_body_);
-		else{
-			recv_body(context_.response_body_);
 		}
+		recv_body(context_.response_body_);
 	}
 }
 
