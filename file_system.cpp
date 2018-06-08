@@ -142,6 +142,7 @@ int copy_dir(std::string from, std::string to, std::string& err)
 		catch (std::exception* e){
 			LOGD("copy_file failed:%s", e->what());
 		}
+		return 0;
 	};
 	LOGD("begin walk_through_dir");
 	return walk_through_dir(fs::path(from), cbfor_file, cbfor_dir, nullptr, true);
