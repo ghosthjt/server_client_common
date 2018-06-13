@@ -448,7 +448,7 @@ int http_request::http_parse_head()
 	return ret_success;
 }
 
-int http_request::on_data_recv()
+int http_request::on_data_recv(size_t)
 {
 	last_recv_ = time(nullptr);
 
