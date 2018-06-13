@@ -43,7 +43,7 @@ enum
 	request_state_recv_body,
 	request_state_chunk_head,
 	request_state_chunk_data,
-
+	request_state_data_complete,
 	//以下状态表示请示已停止
 	request_state_stopped_begin,
 	request_state_finished = request_state_stopped_begin,

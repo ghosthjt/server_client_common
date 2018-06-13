@@ -485,7 +485,7 @@ void http_request::parse()
 			use_recvdata(len);
 			//收完
 			if (context_.response_body_.size() >= context_.content_len_) {
-				context_.request_state_ = request_state_finished;
+				context_.request_state_ = request_state_data_complete;
 			}
 		}
 		else if (context_.content_t_ == content_t_chunked) {
@@ -504,7 +504,7 @@ void http_request::parse()
 		if (chunk_data && context_.content_len_ >= 0) {
 			//数据接收结束了
 			if (context_.content_len_ == 0) {
-				context_.request_state_ = request_state_finished;
+				context_.request_state_ = request_state_data_complete;
 			}
 			else {
 				context_.request_state_ = request_state_chunk_data;
@@ -542,11 +542,12 @@ void http_request::parse()
 		}
 	}
 
-	if (context_.request_state_ == request_state_finished) {
+	if (context_.request_state_ == request_state_data_complete) {
 		if(context_.vheads["content-encoding"] == "gzip") {
 			context_.response_body_ = ungzip(context_.response_body_);
 		}
 		recv_body(context_.response_body_);
+		context_.request_state_ = request_state_finished;
 	}
 }
 
