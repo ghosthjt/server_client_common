@@ -77,6 +77,10 @@ int basic_socket_impl::send_data(stream_buffer dat)
 		s.send(boost::asio::buffer(dat.data(), dat.data_left()), 0, ec);
 		return ec.value();
 	}
+	else if (isconnecting()){
+		pending_send_.push_back(dat);
+		return 0;
+	}
 	else {
 		return -1;
 	}
@@ -126,6 +130,12 @@ void basic_socket_impl::start_recv()
 			boost::asio::placeholders::error,
 			boost::asio::placeholders::bytes_transferred,
 			false));
+
+	for (int i = 0; i < (int)pending_send_.size(); i++)
+	{
+		send_data(pending_send_[i]);
+	}
+	pending_send_.clear();
 }
 
 void basic_socket_impl::switch_to_create_thread(stream_buffer dat, bool close_this, bool sync)
@@ -150,7 +160,7 @@ void basic_socket_impl::data_recv_handler(const boost::system::error_code& ec, s
 	if (!isworking()) return;
 	if (ec.value() == 0) {
 		recv_helper_.reading_buffer_.use_buffer(bytes_transferred);
-		int ret = on_data_recv();
+		int ret = on_data_recv(bytes_transferred);
 		if (ret == 0) {
 			if (recv_helper_.reading_buffer_.buffer_left() < 128) {
 				recv_helper_.reading_buffer_.remove_used();

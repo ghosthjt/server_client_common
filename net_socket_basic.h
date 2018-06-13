@@ -89,7 +89,8 @@ protected:
 
 	boost::thread::id	create_in_thread_;
 	std::map<std::string, std::string> options_;
-	virtual int		on_data_recv() {return 0;}
+	std::vector<stream_buffer> pending_send_;
+	virtual int		on_data_recv(size_t) {return 0;}
 	virtual void	start_recv();
 
 	//切换到创建者线程

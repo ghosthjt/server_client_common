@@ -94,7 +94,7 @@ protected:
 	unsigned int			timeout_;
 	time_t					last_recv_;
 
-	virtual int				on_data_recv() override;
+	virtual int				on_data_recv(size_t) override;
 	virtual void			recv_body(std::string) {};
 
 	void					parse();
