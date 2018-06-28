@@ -15,6 +15,8 @@
 #include <vector>
 #include <string>
 
+#define COPY_STR(a, b)\
+	strncpy(a, b, sizeof(a) - 1)
 
 static std::string get_guid()
 {
